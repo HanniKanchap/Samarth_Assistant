@@ -31,20 +31,23 @@ def extract_entities(prompt):
 
 def gpt_response(question, crop_data, rain_data):
     # Build dataset descriptions conditionally
-    crop_text = ""
-    rain_text = ""
+    def format_dataframe(df, label):
+        if df.empty:
+            return ""
+        if len(df) < 150:
+            display_df = df
+        else:
+            display_df = df.sample(n=100, random_state=42)
+        return f"""{label} (CSV format):
+{display_df.to_string(index=False)}"""
 
-    if not crop_data.empty:
-        crop_text = f"""1. Crop Data (CSV format):
-{crop_data.tail(100).to_string(index=False)}"""
-
-    if not rain_data.empty:
-        rain_text = f"""2. Rainfall Data (CSV format):
-{rain_data.tail(100).to_string(index=False)}"""
+    # Format datasets
+    crop_text = format_dataframe(crop_data, "1. Crop Data")
+    rain_text = format_dataframe(rain_data, "2. Rainfall Data")
 
     # Compose the prompt dynamically
     prompt = f"""
-You are a government data analyst working with agricultural and climate datasets.
+You are a government data analyst working with agricultural and climate datasets and working as a Q&A assistant.
 
 Here is the user's question:
 \"{question}\"
@@ -56,11 +59,12 @@ You are provided with the following dataset(s):
 Your task:
 - Interpret the question.
 - Analyze the available data.
-- Generate a clear, concise, and data-backed answer.
+- Generate a clear, concise, and data-backed answer with a small summary and explain the interpretation.
 - Include specific numbers and trends if relevant.
-- Mention which dataset(s) you used.
+- Mention which dataset(s) you used in brief.
 
 Only return the answer. Do not explain your reasoning or include any extra formatting.
+
 """
 
     completion = client.chat.completions.create(
